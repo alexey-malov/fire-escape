@@ -1,0 +1,15 @@
+[Project]
+FileName=C:\teaching\fire-escape\fire-escape.dp
+Name=fire_escape
+MainUnit=C:\teaching\fire-escape\fire_escape.pas
+UnitCount=1
+ResFiles=
+NoConsole=0
+IsDll=0
+Icon=C:\dev_gpc\Icon\Mainicon.ico
+CompilerOptions=
+IncludeDirs=
+ObjFile=
+[Unit1]
+FileName=C:\teaching\fire-escape\fire_escape.pas
+FileTime=1250104124
