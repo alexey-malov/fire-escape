@@ -2,7 +2,6 @@ PROGRAM FireEscape;
 
 
 CONST
-  InputFileName = 'c:\teaching\fire-escape\plan.txt';
   MAX_PLAN_WIDTH = 100;
   MAX_PLAN_HEIGHT = 100;
   NO_WAVE = 0;
@@ -35,7 +34,7 @@ TYPE
 
   WaveMap = ARRAY[1..MAX_PLAN_HEIGHT, 1..MAX_PLAN_WIDTH] OF Integer;
 
-
+{Преобразует символ входного файла в поле плана здания}
 FUNCTION CharToMapField(Ch: CHAR): MapFieldType;
 BEGIN
   CASE Ch OF
@@ -48,6 +47,7 @@ BEGIN
   END
 END;
 
+{Преобразует поле плана здания в символ выходного файла}
 FUNCTION MapFieldToChar(Field: MapFieldType): CHAR;
 BEGIN
   CASE Field OF
@@ -60,6 +60,28 @@ BEGIN
     Trace:        MapFieldToChar := '.';
     BurnedTrace:  MapFieldToChar := '*';
     FoundEscape:  MapFieldToChar := '!';
+  END
+END;
+
+{Формирует символ выходного файла на основе плана здания и фронта волны}
+FUNCTION WaveMapFieldToChar(Field: MapFieldType; WaveField: Integer): CHAR;
+BEGIN
+  CASE Field OF
+    Empty:
+      BEGIN
+        IF WaveField = 0 THEN                              
+          WaveMapFieldToChar := ' '
+        ELSE
+          WaveMapFieldToChar := Chr(WaveField MOD 10 + Ord('0'))
+      END;
+    Wall:         WaveMapFieldToChar := '#';
+    Fire:         WaveMapFieldToChar := 'X';
+    Escape:       WaveMapFieldToChar := 'E';
+    Person:       WaveMapFieldToChar := 'O';
+    Fire2:        WaveMapFieldToChar := 'x';
+    Trace:        WaveMapFieldToChar := '.';
+    BurnedTrace:  WaveMapFieldToChar := '*';
+    FoundEscape:  WaveMapFieldToChar := '!';
   END
 END;
 
@@ -112,6 +134,7 @@ BEGIN
   IF FileName <> '' THEN Close(InputFile)
 END;
 
+{Запись плана здания в файл}
 PROCEDURE WriteBuildingPlanToFile(FileName: STRING; VAR Plan: BuildingPlan);
 VAR
   OutputFile: TEXT;
@@ -132,6 +155,29 @@ BEGIN
   Close(OutputFile)
 END;
 
+{Записывает план здания в файл с фронтом волны (полезно для целей отладки)}
+PROCEDURE WriteBuildingPlanWithWaveToFile(FileName: STRING; VAR Plan: BuildingPlan; Wave: WaveMap);
+VAR
+  OutputFile: TEXT;
+  Row, Column: Integer;
+BEGIN
+  Assign(OutputFile, FileName);
+  Rewrite(OutputFile);
+
+  FOR Row := 1 TO Plan.Height DO
+  BEGIN
+    FOR Column := 1 TO Plan.Width DO
+    BEGIN
+      Write(OutputFile, WaveMapFieldToChar(Plan.Map[Row, Column], Wave[Row, Column]))
+    END;
+    WRITELN(OutputFile)
+  END;
+
+  Close(OutputFile)
+END;
+
+{Пытается применить шаг StepIndex волнового алгоритма к доступным для перемещения клеткам.
+ Ведет учет сделанных шагов. Возвращает True при обнаружении выхода}
 FUNCTION StepTo(Row, Column: Integer; StepIndex: Integer; VAR Plan: BuildingPlan; VAR Wave: WaveMap; VAR MadeSteps: Integer): BOOLEAN;
 BEGIN
   StepTo := FALSE;
@@ -152,6 +198,7 @@ BEGIN
       END;
 END;
 
+{Применяет шаг волнового алгоритма к 4 соседям поля с координатами Row, Column}
 FUNCTION StepToNeighbors(Row: Integer; Column: Integer; StepIndex: Integer; VAR Plan: BuildingPlan; VAR Wave: WaveMap; VAR MadeSteps: Integer): BOOLEAN;
 VAR
   EscapeWasFound: BOOLEAN;
@@ -163,8 +210,11 @@ BEGIN
   StepToNeighbors := EscapeWasFound;
 END;
 
+{Результат продвижения фронта волны: хода нет, ход есть, найден выход}
 type WavePropagationResult = (NoWay, Stepped, Escaped);
 
+{Применяет шаг распространения  фронта волны. Возвращаемое значение сообщает
+  об обнаружении выхода или его недоступности.}
 FUNCTION PropagateWave(VAR Plan: BuildingPlan; VAR Wave: WaveMap; StepIndex: Integer): WavePropagationResult;
 VAR
   Row, Column: Integer;
@@ -185,6 +235,7 @@ BEGIN
     PropagateWave := NoWay
 END;
 
+{Сжигает доступное поле плана здания в указанных координатах}
 PROCEDURE BurnField(VAR Plan: BuildingPlan; Y, X: Integer);
 BEGIN
   IF (X >= 1) AND (X <= Plan.Width) AND (Y >= 1) AND (Y <= Plan.Height) THEN
@@ -192,6 +243,7 @@ BEGIN
       Plan.Map[Y, X] := Fire2
 END;
 
+{Продвижение фронта огня на соседствующие с огнем поля (если они горят)}
 PROCEDURE PropagateFire(VAR Plan: BuildingPlan; VAR Wave: WaveMap; StepIndex: Integer);
 VAR
   X, Y: Integer;
@@ -216,6 +268,7 @@ BEGIN
         Wave[Y, X] := 0
 END;
 
+{Поиск координат выхода, достугнутого на шаге StepIndex}
 FUNCTION FindEscape(VAR Plan: BuildingPlan; VAR Wave: WaveMap; StepIndex: Integer): MapCoord;
 VAR
   Y, X: Integer;
@@ -235,35 +288,36 @@ BEGIN
   FindEscape := EscapeCoord
 END;
 
-FUNCTION TraceField(Field: MapFieldType): MapFieldType;
+{Помечаем поле, что по нему прошел человек}
+PROCEDURE TraceField(VAR Field: MapFieldType);
 BEGIN
   CASE Field OF
-    Escape: TraceField := FoundEscape;
-    Empty: TraceField := Trace;
-    Fire: TraceField := BurnedTrace;
-    Fire2: TraceField := BurnedTrace;
-    ELSE TraceField := Field;
+    Escape: Field := FoundEscape;
+    Empty: Field := Trace;
+    Fire: Field := BurnedTrace;
+    Fire2: Field := BurnedTrace;
   END;
 END;
 
+{Пытается сделать шаг StepIndex в поле с указанными координатами}
 FUNCTION TraceStep(VAR Plan: BuildingPlan; VAR Wave: WaveMap; Row, Column, StepIndex: Integer): BOOLEAN;
 BEGIN
   IF (Row >= 1) AND (Row <= Plan.Height) AND (Column >= 1) AND (Row <= Plan.Width) THEN
     IF Wave[Row, Column] = StepIndex THEN
     BEGIN
       TraceStep := TRUE;
-      Plan.Map[Row, Column] := TraceField(Plan.Map[Row, Column])
+      TraceField(Plan.Map[Row, Column])
     END
   ELSE
     TraceStep := FALSE
 END;
 
+{Прокладывает путь от найденного на шаге StepIndex выхода к начальной точне нахождения человека}
 PROCEDURE TracePath(VAR Plan: BuildingPlan; VAR Wave: WaveMap; StepIndex: Integer);
 VAR
    Pos: MapCoord;
 BEGIN
   Pos := FindEscape(Plan, Wave, StepIndex);
-  WRITELN(StepIndex);
   Plan.Map[Pos.Row, Pos.Column] := FoundEscape;
   REPEAT
     DEC(StepIndex);
@@ -283,6 +337,7 @@ BEGIN
   UNTIL StepIndex = 1
 END;
 
+{Осуществляет отладочный вывод состояния волны (последний значащий разряд)}
 PROCEDURE DebugWave(VAR Plan: BuildingPlan; VAR Wave: WaveMap);
 VAR
   X, Y: Integer;
@@ -293,10 +348,10 @@ BEGIN
       Write(Wave[Y, X] MOD 10);
     WRITELN
   END;
-  WRITELN
-    
+  WRITELN    
 END;
 
+{Заполняет массив волны нулями (некоторые реализации Pascal не очищают локальные переменные}
 PROCEDURE ClearWave(VAR Wave: WaveMap);
 VAR
   X, Y: Integer;
@@ -306,6 +361,8 @@ BEGIN
       Wave[Y, X] := 0;      
 END;
 
+{Выполняет поиск пути к выходу на указанном плане здания.
+ При достижимости выхода возвращает TRUE и прокладывает к нему маршрут}
 FUNCTION FindPath(VAR Plan: BuildingPlan): BOOLEAN;
 VAR
   Wave: WaveMap;
@@ -337,8 +394,17 @@ BEGIN
 END;
 
 VAR
+  InputFileName: String;
   Plan: BuildingPlan;
 BEGIN
+  IF ParamCount >= 1 THEN
+    InputFileName := ParamStr(1)
+  ELSE
+  BEGIN
+    Write('Enter buiilding plan file name: ');
+    ReadLn(InputFileName)  
+  END;
+  
   Plan := ReadBuildingPlanFromFile(InputFileName);
   WriteBuildingPlanToFile('', Plan);
   
@@ -347,10 +413,10 @@ BEGIN
   IF FindPath(Plan) THEN
     WRITELN('Found an escape')
   ELSE
-    WRITELN('Found no way');
+    WRITELN('It is impossible to escapte from the building');
 
   WriteBuildingPlanToFile('', Plan); 
   
-
-  READLN
+  IF InputFileName = '' THEN 
+    READLN
 END.
