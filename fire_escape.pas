@@ -1,15 +1,14 @@
 PROGRAM FireEscape;
 
-
 CONST
-  MAX_PLAN_WIDTH = 100;
-  MAX_PLAN_HEIGHT = 100;
+  MAX_BUILDING_PLAN_WIDTH = 100;  {максимальна€ ширина плана здани€}
+  MAX_BUILDING_PLAN_HEIGHT = 100; {максимальна€ высота плана здани€}
   NO_WAVE = 0;
-  FIRE_STEP = 2;
+  FIRE_STEP = 2; {ѕериод распространени€ огн€ (в шагах человека) }
 
 TYPE
   MapFieldType = (
-    Empty,  {пустое пространство}
+    Empty,  {пустое пространство}  
     Wall,   {стена}
     Fire,   {очаг возгорани€}
     Escape, {выход}
@@ -20,7 +19,7 @@ TYPE
     FoundEscape {найденный выход}
   );
 
-  BuildingPlanMap = ARRAY[1..MAX_PLAN_HEIGHT, 1..MAX_PLAN_WIDTH] OF MapFieldType;  
+  BuildingPlanMap = ARRAY[1..MAX_BUILDING_PLAN_HEIGHT, 1..MAX_BUILDING_PLAN_WIDTH] OF MapFieldType;  
  
   MapCoord = RECORD
     Row, Column: Integer;
@@ -32,7 +31,7 @@ TYPE
     PersonPos: MapCoord;
   END;
 
-  WaveMap = ARRAY[1..MAX_PLAN_HEIGHT, 1..MAX_PLAN_WIDTH] OF Integer;
+  WaveMap = ARRAY[1..MAX_BUILDING_PLAN_HEIGHT, 1..MAX_BUILDING_PLAN_WIDTH] OF Integer;
 
 {ѕреобразует символ входного файла в поле плана здани€}
 FUNCTION CharToMapField(Ch: CHAR): MapFieldType;
@@ -93,6 +92,7 @@ BEGIN
     Maximum := Y
 END;
 
+{„тение плана здани€ из файла}
 FUNCTION ReadBuildingPlanFromFile(FileName: STRING): BuildingPlan;
 VAR
   Plan: BuildingPlan;
@@ -356,8 +356,8 @@ PROCEDURE ClearWave(VAR Wave: WaveMap);
 VAR
   X, Y: Integer;
 BEGIN
-  FOR Y := 1 TO MAX_PLAN_HEIGHT DO
-    FOR X := 1 TO MAX_PLAN_WIDTH DO
+  FOR Y := 1 TO MAX_BUILDING_PLAN_HEIGHT DO
+    FOR X := 1 TO MAX_BUILDING_PLAN_WIDTH DO
       Wave[Y, X] := 0;      
 END;
 
