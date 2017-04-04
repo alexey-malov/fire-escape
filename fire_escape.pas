@@ -340,7 +340,7 @@ BEGIN
   UNTIL StepIndex = 1
 END;
 
-{Осуществляет отладочный вывод состояния волны (последний значащий разряд)}
+{Осуществляет отладочный вывод состояния волны (последний значащий десятичный разряд номера фронта волны)}
 PROCEDURE DebugWave(VAR Plan: BuildingPlan; VAR Wave: WaveMap);
 VAR
   X, Y: Integer;
