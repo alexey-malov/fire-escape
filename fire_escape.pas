@@ -7,6 +7,7 @@ CONST
   FIRE_STEP = 2; {Период распространения огня (в шагах человека) }
 
 TYPE
+  {Поле плана здания}
   MapFieldType = (
     Empty,  {пустое пространство}  
     Wall,   {стена}
@@ -19,16 +20,18 @@ TYPE
     FoundEscape {найденный выход}
   );
 
+  {Двумерный массив, предназначенный для карты плана здания}
   BuildingPlanMap = ARRAY[1..MAX_BUILDING_PLAN_HEIGHT, 1..MAX_BUILDING_PLAN_WIDTH] OF MapFieldType;  
  
   MapCoord = RECORD
     Row, Column: Integer;
   END;
 
+  {План здания, содержащий необходимую информацию}
   BuildingPlan = RECORD
-    Width, Height: Integer;
-    Map: BuildingPlanMap;
-    PersonPos: MapCoord;
+    Width, Height: Integer; {Размеры}
+    Map: BuildingPlanMap;   {Карта}
+    PersonPos: MapCoord;    {Координаты человека на карте}
   END;
 
   WaveMap = ARRAY[1..MAX_BUILDING_PLAN_HEIGHT, 1..MAX_BUILDING_PLAN_WIDTH] OF Integer;
@@ -250,7 +253,7 @@ VAR
   OldPlan: BuildingPlan;
 BEGIN
   OldPlan := Plan;
-
+  {Распространяем вторичный фронт огня на соседствующие с огнем клетки}
   FOR Y := 1 TO Plan.Height DO
     FOR X := 1 TO Plan.Width DO
       IF (OldPlan.Map[Y, X] = Fire) OR (OldPlan.Map[Y, X] = Fire2) THEN
@@ -268,7 +271,7 @@ BEGIN
         Wave[Y, X] := 0
 END;
 
-{Поиск координат выхода, достугнутого на шаге StepIndex}
+{Поиск координат выхода, достигнутого на шаге StepIndex}
 FUNCTION FindEscape(VAR Plan: BuildingPlan; VAR Wave: WaveMap; StepIndex: Integer): MapCoord;
 VAR
   Y, X: Integer;
